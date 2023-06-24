@@ -4,10 +4,12 @@ import matplotlib.pyplot as plt
 
 #----Calculate the mean----#
 def Calculate_mean(data):
-    return data.mean(1)
+    return data.mean(1).reshape(data.shape[0],1)
+
+#---Center the data points---#
 
 def Center_Data(data):
-    centered_data = data - data.mean(1).reshape(data.shape[0],1)
+    centered_data = data - Calculate_mean(data)
     return centered_data
 
 
@@ -80,8 +82,8 @@ def scatter_plot(data,label):
 
     attribute_names = ['Sepal Length', 'Sepal Width', 'Petal Length', 'Petal Width']
 
-    for index_1 in range(4):
-        for index_2 in range(4):
+    for index_1 in range(data.shape[0]):
+        for index_2 in range(data.shape[0]):
             if index_1 == index_2:
                 continue
             plt.figure()
