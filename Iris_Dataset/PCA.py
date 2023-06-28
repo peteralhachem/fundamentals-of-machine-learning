@@ -1,13 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from Iris_Dataset import Load_Data_from_file,Calculate_mean,Center_Data,scatter_plot
+from Utils import Load_Data_from_file,Calculate_mean,Center_Data,scatter_plot,Calculate_Covarariance_Matrix
 
 
-def Calculate_Covarariance_Matrix(data,row_axis =True):
-    if row_axis:
-        return np.dot(data,data.T) /data.shape[1]
-    else:
-        return np.dot(data,data.T)/data.shape[0]
+
 
 class PCA: 
     def __init__(self, n_components):

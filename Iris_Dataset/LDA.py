@@ -1,9 +1,6 @@
 
-
 import numpy as np
-import matplotlib.pyplot as plt
-from Iris_Dataset import Load_Data_from_file,Calculate_mean,Center_Data,scatter_plot
-from PCA import Calculate_Covarariance_Matrix
+from Utils import Load_Data_from_file,Calculate_mean,Center_Data,scatter_plot,Calculate_Covarariance_Matrix
 import scipy.linalg
 
 
