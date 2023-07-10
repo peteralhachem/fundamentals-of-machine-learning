@@ -3,6 +3,9 @@ import csv
 import matplotlib.pyplot as plt
 import sklearn.datasets
 from MVG import MVG
+from SVM import SVM
+from Gaussian_Classifiers import Gaussian_Classifier
+from Logistic_Regression import LogisticRegression
 
 
 #----Calculate the mean----#
@@ -176,11 +179,11 @@ def KFold_cross_validation(Classifier,model,Data,Label,K):
 
     return final_error
 
-def LOO_Cross_Validation(Classifier,model,Data,Label):
+def LOO_Cross_Validation(Classifier,model,Data,Label,lambda_value = None,K = None, C = None, gamma = None, constant = None, degree = None):
 
-    gc = Classifier(model)
-    error = 0
-    Log = []
+    error = np.zeros(Label.shape[0])
+
+    classifier = Classifier(model)
 
     for i in range (Data.shape[1]):
         train_data =np.delete(Data,i,1)
@@ -188,12 +191,38 @@ def LOO_Cross_Validation(Classifier,model,Data,Label):
         test_data = Data[:,i:i+1]
         test_label = np.array(Label[i]).reshape(1,1)
 
-        gc.fit(train_data,train_label)
-        Predicted_labels,log = gc.predict(test_data)
-        error += gc.calculate_error(test_label)/Data.shape[1]
-        Log.append(log)
+        if isinstance(classifier,Gaussian_Classifier):
 
-    return error,np.array(Log)
+            classifier.fit(train_data,train_label)
+            Predicted_labels = classifier.Predict(test_data)
+            error[i] = classifier.calculate_error(test_label)/Data.shape[1]
+
+        elif isinstance(classifier,LogisticRegression):
+
+            J = classifier.fit(train_data, train_label,value_lambda = lambda_value)
+            Predicted_labels = classifier.Predict(test_data)
+            error[i] = classifier.calculate_error(test_label)/Data.shape[1]
+
+
+
+        elif isinstance(classifier,SVM):
+
+            if model == "Linear":
+                classifier.fit(train_data, train_label, K, C)
+
+            elif model == "Kernel Polynomial":
+                classifier.fit(train_data, train_label, K,C, constant = constant,degree = degree )
+
+            elif model == "Kernel RBF":
+                classifier.fit(train_data, train_label, K, C, gamma = gamma)
+
+            Predicted_labels = classifier.Predict(test_data)
+
+            error[i] = classifier.calculate_error(test_label)/Data.shape[1]
+
+
+
+    return error.sum()
 
 
 
@@ -272,7 +301,7 @@ def BayesErrorPlot(effPriorLogOdds,Normalized_DCF,min_DCF,Normalized_DCF_1 = np.
     plt.xlim([-3, 3])
     plt.xlabel('Prior log-odds')
     plt.ylabel('DCF value')
-    plt.legend(loc='lower left')
+    plt.legend(loc = 'lower left')
 
     plt.show()
 

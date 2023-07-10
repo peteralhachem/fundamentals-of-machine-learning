@@ -5,15 +5,15 @@ import matplotlib.pyplot as plt
 
 
 class SVM:
-    def __init__(self,mode,Data,Label,K,C,gamma= None,constant= None,degree=None):
+    def __init__(self,mode):
         self.mode = mode
         self.Data = Data
         self.Label = Label
-        self.K = K
-        self.C = C
-        self.gamma = gamma
-        self.constant = constant
-        self.degree = degree
+        self.K = None
+        self.C = None
+        self.gamma = None
+        self.constant = None
+        self.degree = None
         self.Z = None
         self.Extended_Data = None
         self.Predicted_Label = None
@@ -22,7 +22,14 @@ class SVM:
         self.W_hat = None
 
 
-
+    def fit(self,Data,Label,K,C,gamma= None,constant= None,degree=None):
+        self.Data = Data
+        self.Label = Label
+        self.K = K
+        self.C = C
+        self.gamma = gamma
+        self.constant = constant
+        self.degree = degree
 
     def _ExtendMatrix(self):
 
@@ -158,7 +165,7 @@ class SVM:
 
 
 
-    def CalculateError(self,LTE):
+    def calculate_error(self,LTE):
 
         Bool_Predictions = np.array(self.Predicted_Label != LTE)
 
@@ -166,25 +173,13 @@ class SVM:
 
         return error * 100
 
-    def CalculateAccuracy(self,LTE):
+    def calculate_accuracy(self,LTE):
 
         Bool_Predictions = np.array(self.Predicted_Label == LTE)
 
         accuracy = float(Bool_Predictions.sum() / LTE.shape[0])
 
         return accuracy * 100
-
-
-def Polynomial_Kernel(Data_1, Data_2, constant, degree, K):
-
-    result = (np.dot(Data_1.T, Data_2) + constant) ** degree + K ** 2
-
-    return result
-
-def RBF_Kernel(Data_1, Data_2, gamma, K):
-    result = np.exp(-gamma * (np.linalg.norm(Data_1 - Data_2) ** 2)) + K ** 2
-
-    return result
 
 
 
@@ -213,10 +208,11 @@ if __name__ == "__main__":
 
     for K in K_array:
         for C in C_array:
-            svm = SVM("Linear",DTR, LTR, K, C)
+            svm = SVM("Linear")
+            svm.fit(DTR, LTR, K, C)
             Predictions = svm.Predict(DTE)
             Dual_loss,Primal_loss,Duality_gap = svm.CalculateLosses()
-            error_rate = svm.CalculateError(LTE)
+            error_rate = svm.calculate_error(LTE)
 
             print(f"{K} | {C} | {-Primal_loss:.6e} | {Dual_loss:.6e} | {Duality_gap:6e} | {error_rate:.1f}%\n ")"""
 
@@ -228,10 +224,11 @@ if __name__ == "__main__":
 
     for k in K_array_Kernel:
         for constant in constant_value:
-            svm = SVM("Kernel Polynomial",DTR,LTR,k,1,constant= constant,degree = 2)
+            svm = SVM("Kernel Polynomial")
+            svm.fit(DTR,LTR,k,1,constant= constant,degree = 2)
             Predictions = svm.Predict(DTE)
             Dual_loss = svm.CalculateLosses()
-            error_rate = svm.CalculateError(LTE)
+            error_rate = svm.calculate_error(LTE)
 
             print(f"{k} | {1} | (d={2},c={constant}) | {Dual_loss:.6e} | {error_rate:.1f}%\n ")"""
 
@@ -243,10 +240,11 @@ if __name__ == "__main__":
 
     for k in K_array_Kernel:
         for gamma in gamma_value:
-            svm = SVM("Kernel RBF",DTR,LTR,k,1,gamma = gamma)
+            svm = SVM("Kernel RBF")
+            svm.fit(DTR,LTR,k,1,gamma = gamma)
             Predictions = svm.Predict(DTE)
             Dual_loss = svm.CalculateLosses()
-            error_rate = svm.CalculateError(LTE)
+            error_rate = svm.calculate_error(LTE)
 
             print(f"{k} | {1} | (gamma={gamma}) | {Dual_loss:.6e} | {error_rate:.1f}%\n ")"""
 
