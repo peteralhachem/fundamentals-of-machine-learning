@@ -1,7 +1,7 @@
 import numpy as np
 import csv
 import matplotlib.pyplot as plt
-import sklearn
+import sklearn.datasets
 from MVG import MVG
 
 
@@ -68,6 +68,21 @@ def Calculate_class_likelihood(Data,mu,C,mode):
     return np.array(Score)
 
 
+#---Compute the confusion matrix between the predictions and the ground truth---#
+
+
+def ComputeConfusionMatrix(Predictions,Ground_Truth):
+
+    ConfusionMatrix = np.zeros((len(np.unique(Ground_Truth)), len(np.unique(Ground_Truth))))
+
+    occurence = 1
+    for i in range(Predictions.shape[0]):
+        ConfusionMatrix[Predictions[i],Ground_Truth[i]] += occurence
+
+    return ConfusionMatrix
+
+
+
 
 
 
@@ -115,6 +130,14 @@ def Load_Iris():
     D,L = sklearn.datasets.load_iris()['data'].T,sklearn.datasets.load_iris()["target"]
     return D,L
 
+#---Changing iris into a binary classification by Removing Setosa---#
+def load_iris_binary():
+    D, L = sklearn.datasets.load_iris()['data'].T, sklearn.datasets.load_iris()['target']
+    D = D[:, L != 0] # We remove setosa from D
+    L = L[L!=0] # We remove setosa from L
+    L[L==2] = 0 # We assign label 0 to virginica (was label 2)
+    return D, L
+
 #---Splitting the dataset into training and test sets---#
 
 def split_db_2to1(D,L,seed=0):
@@ -157,6 +180,8 @@ def LOO_Cross_Validation(Classifier,model,Data,Label):
 
     gc = Classifier(model)
     error = 0
+    Log = []
+
     for i in range (Data.shape[1]):
         train_data =np.delete(Data,i,1)
         train_label = np.delete(Label,i)
@@ -164,10 +189,11 @@ def LOO_Cross_Validation(Classifier,model,Data,Label):
         test_label = np.array(Label[i]).reshape(1,1)
 
         gc.fit(train_data,train_label)
-        Predicted_labels = gc.predict(test_data)
+        Predicted_labels,log = gc.predict(test_data)
         error += gc.calculate_error(test_label)/Data.shape[1]
+        Log.append(log)
 
-    return error
+    return error,np.array(Log)
 
 
 
@@ -229,6 +255,24 @@ def scatter_plot(data,label):
 
             plt.legend()
             plt.tight_layout()
+
+    plt.show()
+
+#------------------------Bayes Model Evaluation----------------------------------------#
+def BayesErrorPlot(effPriorLogOdds,Normalized_DCF,min_DCF,Normalized_DCF_1 = np.array([None]),min_DCF_1 = np.array([None])):
+
+    plt.plot(effPriorLogOdds, Normalized_DCF, label='DCF (e = 0.001)', color='r')
+    plt.plot(effPriorLogOdds, min_DCF, label='minDCF (e = 0.001)', color='b')
+
+    if Normalized_DCF_1.any() and min_DCF_1.any():
+        plt.plot(effPriorLogOdds, Normalized_DCF_1, label='DCF (e = 1)', color='y')
+        plt.plot(effPriorLogOdds, min_DCF_1, label='minDCF (e = 1)', color='g')
+
+    plt.ylim([0, 1.1])
+    plt.xlim([-3, 3])
+    plt.xlabel('Prior log-odds')
+    plt.ylabel('DCF value')
+    plt.legend(loc='lower left')
 
     plt.show()
 

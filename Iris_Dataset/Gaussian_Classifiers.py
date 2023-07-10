@@ -54,6 +54,8 @@ class Gaussian_Classifier():
 
         Joint_Densities = likelihood_Scores * Prior_probability.reshape(Prior_probability.size,1)
 
+        log = np.log(Joint_Densities)
+
         Marginal_Densities = Joint_Densities.sum(0)
         Marginal_Densities = Marginal_Densities.reshape(1,Marginal_Densities.size)
 
@@ -61,7 +63,7 @@ class Gaussian_Classifier():
 
         self.Predicted_Labels = Posterior_Probability.argmax(axis=0)
 
-        return self.Predicted_Labels
+        return self.Predicted_Labels,log
 
 
     def calculate_error(self,Y):
@@ -85,12 +87,23 @@ if __name__ == '__main__':
 
     (DTR,LTR),(DTE,LTE) = split_db_2to1(Data,Label)
 
-    models = ["Multivariate","Naive Bayes","Tied","Tied Naive Bayes"]
 
-    for model in models:
-        print("The error rate of the prediction of model " + model + " : {:.1f} %".format(LOO_Cross_Validation(Gaussian_Classifier,model,Data,Label)))
+    #models = ["Multivariate","Naive Bayes","Tied","Tied Naive Bayes"]
+    models = ["Tied Naive Bayes"]
+    logs = np.zeros(len(models))
+
+    for index,model in enumerate(models):
+        print("The error rate of the prediction of model " + model + " : {:.1f} %".format(LOO_Cross_Validation(Gaussian_Classifier,model,Data,Label)[0]))
         print("\n---------------------------------\n")
+        print(LOO_Cross_Validation(Gaussian_Classifier,model,Data,Label)[1].T)
 
+
+
+    #log_test = np.load("LOO_logSJoint_MVG.npy")
+    #log_test = np.load("LOO_logSJoint_NaiveBayes.npy")
+    #log_test = np.load("LOO_logSJoint_TiedMVG.npy")
+    #log_test = np.load("LOO_logSJoint_TiedNaiveBayes.npy")
+    #print(log_test)
 
 
 
