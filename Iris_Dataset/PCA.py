@@ -7,7 +7,7 @@ from Utils import Load_Data_from_file,Calculate_mean,Center_Data,scatter_plot,Ca
 
 class PCA: 
     def __init__(self, n_components):
-        self.n_components = None
+
         self.n_components = n_components
         self.mean = None
         self.components = None
@@ -25,6 +25,8 @@ class PCA:
         eigenvalues,eigenvectors = np.linalg.eigh(CovarianceMatrix)
 
         self.components = eigenvectors[:, ::-1][:, :self.n_components]
+
+
 
 
     def transform(self,X):
@@ -60,6 +62,8 @@ if __name__ == '__main__':
     X_transformed = pca.transform(X=data)
 
     scatter_plot(X_transformed,labels)
+
+
 
 
 

@@ -3,7 +3,7 @@ import scipy.optimize
 from Utils import *
 
 class LogisticRegression:
-    def __init__(self,mode):
+    def __init__(self, mode):
         self.mode = mode
         self.DTR = None
         self.LTR = None
@@ -23,12 +23,12 @@ class LogisticRegression:
             zi = 2 * LTR[i] -1
             log_value += np.logaddexp(0,-zi*(np.dot(W.T,self.DTR[:,i])+b))
 
-        value = log_value/self.DTR.shape[1]
-        value_1 = 0.5 * self.value_lambda * (np.linalg.norm(W)**2)
+        logistic_loss = log_value/self.DTR.shape[1]
+        regularization_term = 0.5 * self.value_lambda * (np.linalg.norm(W)**2)
 
-        result = value + value_1
+        empirical_risk = regularization_term + logistic_loss
 
-        return result
+        return empirical_risk
 
     def _MulticlassLogisticRegressionObjectivefunction(self,V):
 
@@ -117,7 +117,7 @@ class LogisticRegression:
                 for i in range(DTE.shape[1]):
                     Score[k, i] = np.dot(self.W[:, k], DTE[:, i]) + self.b[k]
 
-            self.Predicted_Labels = np.argmax(Score, axis=0)
+            self.Predicted_Labels = np.argmax(Score, axis = 0)
 
         return self.Predicted_Labels
 
@@ -127,7 +127,7 @@ class LogisticRegression:
 
         error_rate = boolean_values.sum() / LTE.shape[0]
 
-        return error_rate*100
+        return error_rate * 100
 
 
 if __name__ == '__main__':
@@ -138,7 +138,7 @@ if __name__ == '__main__':
     D, L = Load_Iris()
     (DTR, LTR), (DTE, LTE) = split_db_2to1(D, L)
 
-    lambda_values = [10**-6,1e-3,1e-1,1]
+    lambda_values = [10**-6,1e-3,1e-1,1] #Used for regularization
 
     print("-----------------------------")
     print("\t \t| J(W,b) | Error Rate\n")

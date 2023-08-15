@@ -211,7 +211,7 @@ def LOO_Cross_Validation(Classifier,model,Data,Label,lambda_value = None,K = Non
                 classifier.fit(train_data, train_label, K, C)
 
             elif model == "Kernel Polynomial":
-                classifier.fit(train_data, train_label, K,C, constant = constant,degree = degree )
+                classifier.fit(train_data, train_label, K,C, constant = constant, degree = degree )
 
             elif model == "Kernel RBF":
                 classifier.fit(train_data, train_label, K, C, gamma = gamma)
@@ -279,8 +279,8 @@ def scatter_plot(data,label):
             plt.xlabel(attribute_names[index_1])
             plt.ylabel(attribute_names[index_2])
             plt.scatter(D0[index_1],D0[index_2] ,label = "Setosa")
-            plt.scatter(D1[index_1],D1[index_2],label="Versicolor")
-            plt.scatter(D2[index_1],D2[index_2],label="Virginica")
+            plt.scatter(D1[index_1],D1[index_2],label = "Versicolor")
+            plt.scatter(D2[index_1],D2[index_2],label = "Virginica")
 
             plt.legend()
             plt.tight_layout()
@@ -288,7 +288,7 @@ def scatter_plot(data,label):
     plt.show()
 
 #------------------------Bayes Model Evaluation----------------------------------------#
-def BayesErrorPlot(effPriorLogOdds,Normalized_DCF,min_DCF,Normalized_DCF_1 = np.array([None]),min_DCF_1 = np.array([None])):
+def BayesErrorPlot(effPriorLogOdds, Normalized_DCF, min_DCF, Normalized_DCF_1 = np.array([None]), min_DCF_1 = np.array([None])):
 
     plt.plot(effPriorLogOdds, Normalized_DCF, label='DCF (e = 0.001)', color='r')
     plt.plot(effPriorLogOdds, min_DCF, label='minDCF (e = 0.001)', color='b')
@@ -304,6 +304,18 @@ def BayesErrorPlot(effPriorLogOdds,Normalized_DCF,min_DCF,Normalized_DCF_1 = np.
     plt.legend(loc = 'lower left')
 
     plt.show()
+
+
+def plot_density(data_matrix, marginal_log_density):
+
+    x = np.linspace(-10, 5, 1000)
+
+    plt.hist(data_matrix, bins=60, rwidth=0.9, density=True)
+    plt.plot(x, marginal_log_density)
+    plt.xlim([-10.0, 5.0])
+    plt.ylim([0.0, 0.3])
+    plt.show()
+
 
 
 

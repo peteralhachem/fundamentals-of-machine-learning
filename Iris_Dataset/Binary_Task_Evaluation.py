@@ -46,14 +46,20 @@ class BinaryTask:
 
         return BayesRisk,Normalized_BayesRisk
 
+    #---The value of the minimum DCF returned by the function is normalized---#
+
     def Minimum_DCF(self,ground_truth):
+
         self.Ground_Truth = ground_truth
+
         thresholds = np.array(self.Log_Likelihood_ratio)
         thresholds.sort()
         thresholds = np.concatenate([np.array([-np.inf]), thresholds, np.array([np.inf])])
+
         False_Negative_Rate = np.zeros((thresholds.size))
         False_Positive_Rate = np.zeros((thresholds.size))
         BayesRisk = np.zeros((thresholds.size))
+
 
         for index,threshold in enumerate(thresholds):
 
@@ -165,17 +171,24 @@ if __name__ == '__main__':
         print("--------------------------------")
 
 
+        #----Assessing the performance of the recognizer by using an effective prior----#
+        #----Since the system (pi_hat,1,1) is equivalent to any system----#
+
+
     effPriorLogOdds = np.linspace(-3, 3, 21)
     Effective_Prior = 1 / (1 + np.exp(-effPriorLogOdds))
     Cost_Matrix = np.array([[0, 1], [1, 0]])
+
     min_DCF = np.zeros((Effective_Prior.size))
     Normalized_DCF = np.zeros((Effective_Prior.size))
+
     min_DCF_1 = np.zeros((Effective_Prior.size))
     Normalized_DCF_1 = np.zeros((Effective_Prior.size))
 
 
 
     for index, Prior in enumerate(Effective_Prior):
+
         binary_task = BinaryTask(Log_Likelihood_ratio)
         Predictions = binary_task.Predict(Cost_Matrix, Prior)
         ConfusionMatrix = binary_task.CalculateConfusionMatrix(binary_label)

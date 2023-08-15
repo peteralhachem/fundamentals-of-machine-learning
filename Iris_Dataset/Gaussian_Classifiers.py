@@ -39,6 +39,7 @@ class Gaussian_Classifier:
 
         elif self.mode == "Tied Naive Bayes":
             for value in np.unique(self.label):
+
                 inter = Calculate_Covarariance_Matrix(Center_Data(self.data[:, self.label == value]))
                 self.covariance += (inter * (self.data[:, self.label == value].shape[1]))
 
@@ -57,6 +58,8 @@ class Gaussian_Classifier:
         Joint_Densities = likelihood_Scores * Prior_probability.reshape(Prior_probability.size,1)
 
         #log = np.log(Joint_Densities)
+
+        #----Marginal is the summation of all the Joint densities of a sample within all the classes----#
 
         Marginal_Densities = Joint_Densities.sum(0)
         Marginal_Densities = Marginal_Densities.reshape(1,Marginal_Densities.size)
