@@ -1,81 +1,50 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from Utils import Load_Data_from_file,Calculate_mean,Center_Data,scatter_plot,Calculate_Covarariance_Matrix
+from Utils import *
 
 
-
-
-class PCA: 
+class PCA:
     def __init__(self, n_components):
-
         self.n_components = n_components
-        self.mean = None
+        self.cov = None
         self.components = None
 
-    def fit(self,X): 
-        #---Center the data and calculate the mean---#
-        centered_data = Center_Data(X)
-        self.mean = Calculate_mean(X)
-    
+    def fit(self, data_matrix):
+        """
+        In the fitting section of PCA, we calculate the eigenvectors in ascending order of their eigenvalues.\n
+        The eigenvectors are then chosen based on the number of components specified in the pca.
 
-        #Compute the covariance matrix
-        CovarianceMatrix = Calculate_Covarariance_Matrix(centered_data)
+        :param data_matrix: matrix of data to perform PCA on.
 
-        #Compute the eigenvalues and eigenvectors
-        eigenvalues,eigenvectors = np.linalg.eigh(CovarianceMatrix)
+        """
+
+        centered_data = center_data(data_matrix)
+
+        self.cov = calculate_covariance(centered_data)
+
+        eigenvalues, eigenvectors = np.linalg.eigh(self.cov)
 
         self.components = eigenvectors[:, ::-1][:, :self.n_components]
 
+    def transform(self, data_matrix):
+        """
+        In the transform section of PCA, we perform a linear transformation on the new directions computed in the
+        fit section.\n
+        The transformation follows the equation: ....
 
+        :param data_matrix: data matrix to perform transformation on.
+        :return: Transformed data based on the new directions calculated by the eigenvectors.
+        """
+        centered_data = center_data(data_matrix)
 
+        transformed_data = np.dot(self.components.T, centered_data)
 
-    def transform(self,X):
-        #---Center the data and calculate the mean---#
-        centered_data =Center_Data(X)
-
-
-        X_transformed = np.dot(self.components.T,centered_data)
-
-        return X_transformed
-
-
-
-
-
-
-
-    
-    
-
-
-
-   
-
+        return transformed_data
 
 
 if __name__ == '__main__':
-
-    data,labels = Load_Data_from_file("Dataset/iris.csv")
+    data, labels = load_data_from_file("Dataset/iris.csv")
 
     pca = PCA(n_components=2)
-    pca.fit(X=data)
-    X_transformed = pca.transform(X=data)
+    pca.fit(data_matrix=data)
+    X_transformed = pca.transform(data_matrix=data)
 
-    scatter_plot(X_transformed,labels)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    scatter_plot(X_transformed, labels)

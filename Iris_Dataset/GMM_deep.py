@@ -7,9 +7,9 @@ from GMM_load import *
 
 class GMM:
 
-    def __init__(self, data_matrix, given_components):
+    def __init__(self, data_matrix):
         self.Data = data_matrix
-        self.gmm_components = given_components
+        self.gmm_components = None
         self.responsibilities = None
         self.joint_log_density = None
         self.marginal_log_density = None
@@ -73,14 +73,15 @@ class GMM:
         weights = zero_order / zero_order.sum()
 
         for g in range(len(self.gmm_components)):
-
             new_gmm.append((weights[g], mu[g].reshape((self.Data.shape[0], 1)), covariance[g]))
 
         self.gmm_components = new_gmm
 
         return self.gmm_components
 
-    def em_algorithm(self, delta_l=10 ** -6):
+    def em_algorithm(self, gmm_component, delta_l=10 ** -6):
+
+        self.gmm_components = gmm_component
 
         previous_log_likelihood = -inf
         num_samples = self.Data.shape[1]
@@ -91,7 +92,6 @@ class GMM:
             likelihood_increment = current_log_likelihood - previous_log_likelihood
 
             if likelihood_increment < delta_l * num_samples:
-
                 average_log_likelihood = current_log_likelihood / num_samples
                 return self.gmm_components, average_log_likelihood
 
@@ -100,6 +100,40 @@ class GMM:
             self.gmm_components = new_gmm_components
 
             previous_log_likelihood = current_log_likelihood
+
+    def lbg_algorithm(self, num_components, alpha=0.1):
+        """
+        Performs the G-component decomposition into a 2G-component without the need to a point of initialization for the
+        GMM components.
+        :param alpha: value between the range [0,1] that helps computing the displacement vector d.
+        :param num_components: number of GMM components to be resulted at the end of the LBG algorithm.
+        TODO: compute the mean and covariance matrix of the dataset.
+        TODO: compute the displacement vector d.
+        TODO: split the G-components in 2G-components.
+        TODO: Update the value of the GMM.
+        """
+
+        mu = calculate_mean(self.Data)
+        cov = calculate_covariance(self.Data)
+        iteration = 0
+
+        # ---Compute displacement vector d--- #
+
+        u, s, _ = numpy.linalg.svd(cov)
+        d = u[:, 0:1] * s[0] ** 0.5 * alpha
+
+        self.gmm_components = [(1.0, mu, cov)]
+
+        while iteration < num_components:
+
+            updated_gmm, log_likelihood_value = self.em_algorithm(self.gmm_components)
+
+
+
+
+
+
+
 
     def __str__(self):
 
@@ -116,6 +150,6 @@ if __name__ == "__main__":
     log_densities_4D = np.load("GMM_4D_3G_init_ll.npy")
     log_densities_1D = np.load("GMM_1D_3G_init_ll.npy")
 
-    gmm = GMM(data_1D, gmm_1D)
+    gmm = GMM(data_4D)
 
-    gmm_components, log_likelihood = gmm.em_algorithm()
+    gmm_components, log_likelihood = gmm.em_algorithm(gmm_4D)

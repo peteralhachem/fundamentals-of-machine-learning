@@ -1,31 +1,21 @@
 import numpy as np
 
-def MVG(X,mu,C):
 
-    Y =[]
+def multivariate_gaussian(data_matrix, mu, cov):
+    result = []
 
+    for value in range(data_matrix.shape[1]):
+        constant = -0.5 * cov.shape[0] * np.log(2 * np.pi)
+        variable_1 = -0.5 * np.linalg.slogdet(cov)[1]
 
-    for value in range(X.shape[1]):
+        variable_2 = data_matrix[:, value:value + 1] - mu
+        variable_3 = -0.5 * np.dot(variable_2.T, np.dot(np.linalg.inv(cov), variable_2))
 
-        constant = -0.5 * C.shape[0] * np.log(2 * np.pi)
-        variable_1 = -0.5 * np.linalg.slogdet(C)[1]
+        result.append(constant + variable_1 + variable_3)
 
-        variable_2 = X[:,value:value+1] - mu
-        variable_3 = -0.5 * np.dot(variable_2.T,np.dot(np.linalg.inv(C),variable_2))
-
-        Y.append(constant+variable_1+variable_3)
-
-    return np.array(Y).ravel()
-
-def Log_Likelihood_Estimator(X,mu,C):
-
-    Y = MVG(X,mu,C)
-    return np.sum(Y)
+    return np.array(result).ravel()
 
 
-
-
-
-
-
-
+def log_likelihood_estimator(data_matrix, mu, cov):
+    result = multivariate_gaussian(data_matrix, mu, cov)
+    return np.sum(result)
