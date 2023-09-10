@@ -1,208 +1,190 @@
-import numpy as np
 from Utils import *
 import scipy
-import matplotlib.pyplot as plt
 
 
 class SVM:
-    def __init__(self,mode):
+    def __init__(self, mode):
         self.mode = mode
-        self.Data = Data
-        self.Label = Label
-        self.K = None
-        self.C = None
+        self.data_matrix = None
+        self.labels = None
+        self.k = None
+        self.c = None
         self.gamma = None
         self.constant = None
         self.degree = None
-        self.Z = None
-        self.Extended_Data = None
-        self.Predicted_Label = None
-        self.Primal_loss = None
-        self.Dual_loss = None
-        self.W_hat = None
+        self.z = None
+        self.extended_data = None
+        self.predicted_labels = None
+        self.primal_loss = None
+        self.dual_loss = None
+        self.w_hat = None
 
-
-    def fit(self,Data,Label,K,C,gamma= None,constant= None,degree=None):
-        self.Data = Data
-        self.Label = Label
-        self.K = K
-        self.C = C
+    def fit(self, data_matrix, labels, k, c, gamma=None, constant=None, degree=None):
+        self.data_matrix = data_matrix
+        self.labels = labels
+        self.k = k
+        self.c = c
         self.gamma = gamma
         self.constant = constant
         self.degree = degree
 
-    def _ExtendMatrix(self):
+    def _extend_matrix(self):
 
-        row = np.tile(self.K,(1,self.Data.shape[1]))
+        row = np.tile(self.k, (1, self.data_matrix.shape[1]))
 
-        self.Extended_Data = np.vstack((self.Data,row))
+        self.extended_data = np.vstack((self.data_matrix, row))
 
-        return self.Extended_Data
+        return self.extended_data
 
-    def _Polynomial_Kernel(self,Data_1, Data_2, constant, degree, K):
+    @staticmethod
+    def _polynomial(data_1, data_2, constant, degree, k):
 
-        result = (np.dot(Data_1.T, Data_2) + constant) ** degree + K ** 2
-
-        return result
-
-    def _RBF_Kernel(self,Data_1, Data_2, gamma, K):
-        result = np.exp(-gamma * (np.linalg.norm(Data_1 - Data_2) ** 2)) + K ** 2
+        result = (np.dot(data_1.T, data_2) + constant) ** degree + k ** 2
 
         return result
 
-    def _Calculate_H(self):
+    @staticmethod
+    def _rbf(data_1, data_2, gamma, k):
 
-        self.Z = 2 * self.Label - 1
+        result = np.exp(-gamma * (np.linalg.norm(data_1 - data_2) ** 2)) + k ** 2
 
-        self.Extended_Data = self._ExtendMatrix()
+        return result
+
+    def _calculate_h(self):
+
+        self.z = 2 * self.labels - 1
+
+        self.Extended_Data = self._extend_matrix()
 
         if self.mode == "Linear":
-            G = np.dot(self.Extended_Data.T,self.Extended_Data)
+            g = np.dot(self.extended_data.T, self.extended_data)
 
         elif self.mode == "Kernel Polynomial":
-            G = self._Polynomial_Kernel(self.Data,self.Data,self.constant,self.degree,self.K)
+            g = self._polynomial(self.data_matrix, self.data_matrix, self.constant, self.degree, self.k)
 
-        elif self.mode == "Kernel RBF":
-            G = np.zeros((self.Data.shape[1],self.Data.shape[1]))
-            for i in range(G.shape[0]):
-                for j in range(G.shape[1]):
-                    G[i,j] = self._RBF_Kernel(self.Data[:,i],self.Data[:,j],self.gamma,self.K)
+        else:
+            g = np.zeros((self.data_matrix.shape[1], self.data_matrix.shape[1]))
+            for i in range(g.shape[0]):
+                for j in range(g.shape[1]):
+                    g[i, j] = self._rbf(self.data_matrix[:, i], self.data_matrix[:, j], self.gamma, self.k)
 
+        h = np.dot(self.z.reshape(self.z.shape[0], 1), self.z.reshape(self.z.shape[0], 1).T) * g
 
-        H = np.dot(self.Z.reshape(self.Z.shape[0],1),self.Z.reshape(self.Z.shape[0],1).T) * G
+        return h
 
-        return H
+    def _l_function(self, alpha):
 
-    def _L(self,Alpha):
+        h = self._calculate_h()
+        ones = np.ones(self.extended_data.shape[1])
 
-        H = self._Calculate_H()
-        ones = np.ones(self.Extended_Data.shape[1])
-        result = 0.5 * np.dot(np.dot(Alpha.T,H), Alpha) - np.dot(Alpha.T,ones)
+        result = 0.5 * np.dot(np.dot(alpha.T, h), alpha) - np.dot(alpha.T, ones)
 
-        gradient = np.dot(H,Alpha) - ones
-
+        gradient = np.dot(h, alpha) - ones
 
         return result, gradient.reshape(gradient.size)
 
-    def _Find_Alpha(self):
+    def _find_alpha(self):
 
-        self.Extended_Data = self._ExtendMatrix()
-        bound = [(0, self.C)] * self.Extended_Data.shape[1]
+        self.extended_data = self._extend_matrix()
+
+        bound = [(0, self.c)] * self.Extended_Data.shape[1]
         x0 = np.zeros(self.Extended_Data.shape[1])
 
-        X, self.Primal_loss, _ = scipy.optimize.fmin_l_bfgs_b(self._L, x0=x0, bounds=bound, factr=1.0)
+        x, self.Primal_loss, _ = scipy.optimize.fmin_l_bfgs_b(self._l_function, x0=x0, bounds=bound, factr=1.0)
 
-        return X,self.Primal_loss
+        return x, self.primal_loss
 
-    def Predict(self,DTE):
+    def predict(self, test_matrix):
 
-        Score = np.zeros(DTE.shape[1])
+        score = np.zeros(test_matrix.shape[1])
 
-        Alpha,self.Primal_loss = self._Find_Alpha()
+        alpha, self.primal_loss = self._find_alpha()
 
         if self.mode == "Linear":
 
-            self.W_hat = np.dot(self.Z * self.Extended_Data, Alpha)
-            W = self.W_hat[:DTE.shape[0]].reshape(self.W_hat[:DTE.shape[0]].shape[0], 1)
-            b = self.W_hat[DTE.shape[0]]
+            self.w_hat = np.dot(self.z * self.extended_data, alpha)
+            w = self.w_hat[:test_matrix.shape[0]].reshape(self.w_hat[:test_matrix.shape[0]].shape[0], 1)
+            b = self.w_hat[DTE.shape[0]]
 
             for i in range(DTE.shape[1]):
-                Score[i] = np.dot(W.T, DTE[:, i]) + b
+                score[i] = np.dot(w.T, test_matrix[:, i]) + b
 
         elif self.mode == "Kernel Polynomial":
-            Score = np.dot(Alpha * self.Z, self._Polynomial_Kernel(self.Data,DTE,self.constant,self.degree,self.K))
-
+            score = np.dot(alpha * self.z, self._polynomial(self.data_matrix, test_matrix, self.constant, self.degree,
+                                                            self.k))
         elif self.mode == "Kernel RBF":
-            Kernel_values = np.zeros((self.Data.shape[1],DTE.shape[1]))
 
-            for i in range(self.Data.shape[1]):
+            kernel_values = np.zeros((self.data_matrix.shape[1], test_matrix.shape[1]))
+
+            for i in range(self.data_matrix.shape[1]):
                 for j in range(DTE.shape[1]):
-                    Kernel_values[i,j] = self._RBF_Kernel(self.Data[:,i],DTE[:,j],self.gamma,self.K)
+                    kernel_values[i, j] = self._rbf(self.data_matrix[:, i], test_matrix[:, j], self.gamma, self.k)
 
+            score = np.dot(alpha * self.z, kernel_values)
 
-            Score = np.dot(Alpha * self.Z, Kernel_values)
+        self.predicted_labels = np.int32(score > 0)
 
+        return self.predicted_labels
 
+    def _loss_for_linear(self):
 
-        self.Predicted_Label = np.int32(Score > 0)
-
-
-
-        return self.Predicted_Label
-
-
-
-    def _CalculateLossesForLinear(self):
-
-        Max_Sum = 0
+        maxsum = 0
 
         for i in range(self.Extended_Data.shape[1]):
-            Max_Sum += max(0, 1 - (self.Z[i] * np.dot(self.W_hat, self.Extended_Data[:, i])))
+            maxsum += max(0, 1 - (self.z[i] * np.dot(self.w_hat, self.extended_data[:, i])))
 
-        self.Dual_loss = 0.5 * (np.linalg.norm(self.W_hat)) ** 2 + self.C * Max_Sum
+        self.dual_loss = 0.5 * (np.linalg.norm(self.w_hat)) ** 2 + self.c * maxsum
 
-        Dual_Gap = self.Dual_loss + self.Primal_loss
+        dual_gap = self.dual_loss + self.Primal_loss
 
-        return self.Dual_loss, self.Primal_loss, Dual_Gap
+        return self.dual_loss, self.Primal_loss, dual_gap
 
-    def _CalculateLossesforkernel(self):
+    def _loss_for_kernel(self):
 
-        self.Dual_loss = -self.Primal_loss
+        self.dual_loss = -self.primal_loss
 
-        return self.Dual_loss
+        return self.dual_loss
 
-    def CalculateLosses(self):
+    def calculate_losses(self):
 
         if self.mode == "Linear":
-            return self._CalculateLossesForLinear()
+            return self._loss_for_linear()
 
         if self.mode == "Kernel Polynomial":
-            return self._CalculateLossesforkernel()
+            return self._loss_for_kernel()
 
         if self.mode == "Kernel RBF":
-            return self._CalculateLossesforkernel()
+            return self._loss_for_kernel()
 
+    def calculate_error(self, test_labels):
 
+        bool_predictions = np.array(self.predicted_labels != test_labels)
 
-
-    def calculate_error(self,LTE):
-
-        Bool_Predictions = np.array(self.Predicted_Label != LTE)
-
-        error = float(Bool_Predictions.sum() / LTE.shape[0])
+        error = float(bool_predictions.sum() / test_labels.shape[0])
 
         return error * 100
 
-    def calculate_accuracy(self,LTE):
+    def calculate_accuracy(self, test_labels):
 
-        Bool_Predictions = np.array(self.Predicted_Label == LTE)
+        bool_predictions = np.array(self.predicted_labels == test_labels)
 
-        accuracy = float(Bool_Predictions.sum() / LTE.shape[0])
+        accuracy = float(bool_predictions.sum() / test_labels.shape[0])
 
         return accuracy * 100
 
 
-
-
-
-
-
-
-
-
 if __name__ == "__main__":
-
     Data, Label = load_iris_binary()
-    (DTR, LTR) , (DTE, LTE) = split_db_2to1(Data,Label)
+    (DTR, LTR), (DTE, LTE) = split_db_2to1(Data, Label)
 
-    K_array =[1,10]
-    C_array = [0.1,1,10]
+    K_array = [1, 10]
+    C_array = [0.1, 1, 10]
 
-    K_array_Kernel = [0,1]
-    constant_value = [0,1]
-    gamma_value = [1,10]
+    K_array_Kernel = [0, 1]
+    constant_value = [0, 1]
+    gamma_value = [1, 10]
 
-    #----------------Linear SVM----------------#
+    # ----------------Linear SVM----------------#
 
     """print("K | C | Primal Loss | Dual Loss | Duality Gap | Error Rate\n ")
 
@@ -216,9 +198,7 @@ if __name__ == "__main__":
 
             print(f"{K} | {C} | {-Primal_loss:.6e} | {Dual_loss:.6e} | {Duality_gap:6e} | {error_rate:.1f}%\n ")"""
 
-
-
-    #--------------Polynomial Kernel SVM --------#
+    # --------------Polynomial Kernel SVM --------#
 
     """print("K | C | Kernel: Polynomial | Dual Loss | Error Rate\n ")
 
@@ -232,9 +212,7 @@ if __name__ == "__main__":
 
             print(f"{k} | {1} | (d={2},c={constant}) | {Dual_loss:.6e} | {error_rate:.1f}%\n ")"""
 
-
-
-    #-------------------RBF Kernel SVM------------------------#
+    # -------------------RBF Kernel SVM------------------------#
 
     """print("K | C | Kernel: RBF | Dual Loss | Error Rate\n ")
 
@@ -247,27 +225,3 @@ if __name__ == "__main__":
             error_rate = svm.calculate_error(LTE)
 
             print(f"{k} | {1} | (gamma={gamma}) | {Dual_loss:.6e} | {error_rate:.1f}%\n ")"""
-
-
-
-            
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

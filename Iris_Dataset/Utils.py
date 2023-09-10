@@ -119,7 +119,7 @@ def load_data_from_file(filename):
 
 
 # ---Load Iris dataset using the sklearn---#
-def load_iris():
+def load_iris_function():
     data_matrix, labels = load_iris()['data'].T, load_iris()["target"]
     return data_matrix, labels
 
@@ -212,7 +212,7 @@ def leave_one_out_cross_validation(classifier, model, data_matrix, labels, lambd
             elif model == "Kernel RBF":
                 classifier.fit(train_data, train_label, k, c, gamma=gamma)
 
-            predicted_labels = classifier.Predict(test_data)
+            predicted_labels = classifier.predict(test_data)
 
             error[i] = classifier.calculate_error(test_label) / data_matrix.shape[1]
 

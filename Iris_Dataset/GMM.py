@@ -1,233 +1,212 @@
-import numpy as np
-import scipy.special
+from math import inf
+from scipy.special import logsumexp
 
 from Utils import *
-from MVG import MVG
-from GMM_load import load_gmm
-from MVG import MVG
+from GMM_load import *
+from MVG import multivariate_gaussian
 
 
-class GMM_Evaluator:
-    def __init__(self):
-        self.X = None
-        self.gmm = None
-        self.Posterior_probability = None
-        self.log_likelihood = None
-        self.Weight_matrix = None
-        self.Mean_matrix = None
-        self.Covariance_matrix = None
+class GMM:
 
+    def __init__(self, data_matrix):
+        self.Data = data_matrix
+        self.gmm_components = None
+        self.responsibilities = None
+        self.joint_log_density = None
+        self.marginal_log_density = None
 
+    def _gmm_log_density(self):
 
+        self.joint_log_density = np.zeros((len(self.gmm_components), self.Data.shape[1]))
 
-    def _GMM_logdensity(self,X,gmm):
+        for g in range(len(self.gmm_components)):
+            self.joint_log_density[g, :] = multivariate_gaussian(self.Data, self.gmm_components[g][1],
+                                                                 self.gmm_components[g][2])
 
+            self.joint_log_density[g, :] += np.log(self.gmm_components[g][0])
 
-        self.Joint_log_density = np.zeros((len(gmm),X.shape[1]))
+        self.marginal_log_density = logsumexp(self.joint_log_density, axis=0)
 
-        for g in range(len(gmm)):
-            self.Joint_log_density[g,:] = MVG(X,gmm[g][1],gmm[g][2])
-            self.Joint_log_density[g,:] += np.log(gmm[g][0])
+        return self.marginal_log_density, self.joint_log_density
 
+    def _e_step(self):
+        """
+        With the E-step, we calculate the responsibilities and the value of the log likelihood used later to  update
+        gmm components.
+        :return: responsibilities (exponential form of the subtraction the joint log density and marginal log density),
+        log likelihood value.
 
-        self.Marginal_log_density = scipy.special.logsumexp(self.Joint_log_density,axis = 0)
+        """
 
+        self.marginal_log_density, self.joint_log_density = self._gmm_log_density()
 
+        self.responsibilities = np.exp(self.joint_log_density - self.marginal_log_density)
 
+        log_likelihood_value = np.sum(self.marginal_log_density)
 
-        return self.Joint_log_density, self.Marginal_log_density
+        return self.responsibilities, log_likelihood_value
 
+    def _m_step(self, covariance_type, psi):
+        """
+        Performs the M step of the EM algorithm. In the M step, you update the weights, mean and covariances based on
+        statistical values that are computed based on the responsibilities calculated in the E step.
+        :param covariance_type: The type of the covariance can be either "full", "diagonal" or "tied".
+        :psi: parameter used to constraint the eigenvalues of the covariance matrix, in this way we can bind the log
+        likelihood value, so it does not degenerate very high values.
+        :return: updated gmm components.
+        """
 
-    def _Estep(self):
+        zero_order = np.zeros((len(self.gmm_components)))
+        first_order = np.zeros((len(self.gmm_components), self.Data.shape[0]))
+        second_order = np.zeros((len(self.gmm_components), self.Data.shape[0], self.Data.shape[0]))
 
-        Joint_log_density, Marginal_log_density = self._GMM_logdensity(self.X,self.gmm)
-
-        self.Posterior_Probability = np.exp(Joint_log_density - Marginal_log_density)
-
-        self.log_likelihood = np.sum(Marginal_log_density) / self.X.shape[1]
-
-        return self.log_likelihood
-
-
-
-    def _Mstep(self):
+        mu = np.zeros((len(self.gmm_components), self.Data.shape[0]))
+        covariance = np.zeros((len(self.gmm_components), self.Data.shape[0], self.Data.shape[0]))
+        mean_products = np.zeros((len(self.gmm_components), self.Data.shape[0], self.Data.shape[0]))
+        # weights = np.zeros((len(self.gmm_components)))
 
         new_gmm = []
 
+        for g in range(len(self.gmm_components)):
+            zero_order[g] = self.responsibilities[g].sum()
+            first_order[g] = np.dot(self.responsibilities[g].reshape((1, self.Data.shape[1])), self.Data.T)
 
-        #---Zero Order Statistics---#
-        Z_g = np.sum(self.Posterior_Probability, axis=1)
+        for g in range(len(self.gmm_components)):
+            temp_matrix = np.zeros((self.Data.shape[0], self.Data.shape[0]))
+            for i in range(self.Data.shape[1]):
+                temp_matrix += self.responsibilities[g, i] * np.dot(self.Data[:, i].reshape((self.Data.shape[0], 1)),
+                                                                    self.Data[:, i].reshape((1, self.Data.shape[0])))
 
-        new_weights = Z_g / np.sum(Z_g)
+            second_order[g] = temp_matrix
 
-        F_g = np.dot(self.Posterior_Probability, self.X.T).T
+            mu[g] = first_order[g] / zero_order[g]
 
-        S_g = np.zeros((len(self.gmm), self.X.shape[0], self.X.shape[0]))
+        for g in range(len(self.gmm_components)):
+            mean_products[g] = np.dot(mu[g, :].reshape((self.Data.shape[0], 1)),
+                                      mu[g, :].reshape((1, self.Data.shape[0])))
 
-        for g in range(len(self.gmm)):
-            intermediate_matrix = np.zeros((self.X.shape[0], self.X.shape[0]))
-            for i in range(self.X.shape[1]):
-                intermediate_matrix += self.Posterior_Probability[g, i] * np.dot(
-                    self.X[:, i].reshape((self.X.shape[0], 1)), self.X[:, i].reshape((1, self.X.shape[0])))
+            covariance[g] = (second_order[g] / zero_order[g]) - mean_products[g]
 
-            S_g[g] = intermediate_matrix
+        if covariance_type == 'diagonal':
+            for g in range(len(self.gmm_components)):
+                covariance[g] = covariance[g] * np.eye(covariance[g].shape[0])
 
-        new_mu = F_g / Z_g
+        elif covariance_type == 'tied':
+            temp_matrix = np.zeros((self.Data.shape[0], self.Data.shape[0]))
+            for g in range(len(self.gmm_components)):
+                temp_matrix += zero_order[g] * covariance[g]
+            for g in range(len(self.gmm_components)):
+                covariance[g] = temp_matrix / self.Data.shape[1]
 
-        mu_product = np.zeros((len(self.gmm), self.X.shape[0], self.X.shape[0]))
-        for g in range(len(self.gmm)):
-            mu_product[g] = np.dot(new_mu[:, g].reshape((self.X.shape[0], 1)),
-                                   new_mu[:, g].reshape((1, self.X.shape[0])))
+        # ---Perform Eigenvalue check on all the covariances ---#
+        for g in range(len(self.gmm_components)):
+            covariance[g] = self._check_eigenvalues(covariance[g], psi=psi)
 
-        new_covariance = S_g / Z_g.reshape((Z_g.size, 1, 1)) - mu_product
+        weights = zero_order / zero_order.sum()
 
-        for g in range(len(self.gmm)):
+        for g in range(len(self.gmm_components)):
+            new_gmm.append((weights[g], mu[g].reshape((self.Data.shape[0], 1)), covariance[g]))
 
-            if self.model == "Diagonal Covariance":
+        self.gmm_components = new_gmm
 
-                new_covariance[g] = new_covariance[g] * np.eye(new_covariance[g].shape[0])
+        return self.gmm_components
 
-            elif self.model == "Tied Covariance":
+    def em_algorithm(self, gmm_component, psi, delta_l=10 ** -6, covariance_type="full"):
 
-                new_covariance[g] = np.dot(Z_g,new_covariance[g])/self.X.shape[1]
+        self.gmm_components = gmm_component
 
-            if self.psi != None:
-                U, s, _ = np.linalg.svd(new_covariance[g])
-                s[s < self.psi] = self.psi
-                new_covariance[g] = np.dot(U, s.reshape((s.size, 1)) * U.T)
+        previous_log_likelihood = -inf
+        num_samples = self.Data.shape[1]
 
+        while True:
+            self.responsibilities, current_log_likelihood = self._e_step()
 
-            new_gmm.append((new_weights[g],new_mu[:, g].reshape((new_mu.shape[0], 1)), new_covariance[g]))
+            likelihood_increment = current_log_likelihood - previous_log_likelihood
 
+            if likelihood_increment < delta_l * num_samples:
+                average_log_likelihood = current_log_likelihood / num_samples
+                return self.gmm_components, average_log_likelihood
 
-        return new_gmm
+            new_gmm_components = self._m_step(covariance_type, psi)
 
-    def EM(self, X, gmm, model = None,threshold = 10**(-6), psi = None):
+            self.gmm_components = new_gmm_components
 
-        self.model = model
-        self.X = X
-        self.gmm = gmm
-        self.psi = psi
+            previous_log_likelihood = current_log_likelihood
 
+    def lbg_algorithm(self, num_components, psi=0.01, alpha=0.1, covariance_type="full"):
+        """
+        Performs the G-component decomposition into a 2G-component without the need to a point of initialization for the
+        GMM components.
+        :param num_components: number of GMM components to be resulted at the end of the LBG algorithm.
+        :param alpha: value between the range [0,1] that helps computing the displacement vector d.
+        :param psi: value greater than zero, help us constrain the eigenvalues of the covariance matrix, so we don't get
+        degenerate values in the log likelihood.
+        :param covariance_type: The type of covariance we want to have, e.g. "full, diagonal, tied".
 
-        condition = True
+        """
 
-        while(condition):
+        mu = calculate_mean(self.Data)
+        cov = calculate_covariance(self.Data)
 
-            average_log_likelihood_1 = self._Estep()
-            self.gmm = self._Mstep()
+        if covariance_type == 'diagonal':
+            cov = cov * np.eye(cov.shape[0])
 
-            average_log_likelihood_2 = self._Estep()
+        cov = self._check_eigenvalues(cov, psi)
+        iteration = 0
+        log_likelihood_value = 0
 
-            if ((average_log_likelihood_2 - average_log_likelihood_1) < 0):
-                print("Loglikelihood NOT INCREASING")
+        self.gmm_components = [(1.0, mu, cov)]
 
-            elif ((average_log_likelihood_2 - average_log_likelihood_1) < threshold ):
-                condition = False
+        while True:
+            if iteration < num_components / 2:
+                d = self._compute_d(self.gmm_components, alpha=alpha)
+                split_components = self._split_gmm_components(self.gmm_components, d)
+                self.gmm_components = split_components
+                new_components, log_likelihood_value = self.em_algorithm(self.gmm_components, psi=psi,
+                                                                         covariance_type=covariance_type)
+                self.gmm_components = new_components
+                iteration += 1
 
+            else:
+                return self.gmm_components, log_likelihood_value
 
-        return self.gmm, average_log_likelihood_2
+    @staticmethod
+    def _check_eigenvalues(cov, psi):
 
-    def _Compute_d(self,Covariance_matrix, alpha):
+        u, s, _ = numpy.linalg.svd(cov)
+        s[s < psi] = psi
+        cov = numpy.dot(u, s.reshape(s.size, 1) * u.T)
 
-        U , s, Vh = np.linalg.svd(Covariance_matrix)
+        return cov
 
-        d = U[:,0:1] * np.sqrt(s[0]) * alpha
+    @staticmethod
+    def _split_gmm_components(gmm_components, d):
 
-        return d
+        new_gmm_components = []
 
-    def LBG(self,number_of_components,X,alpha,model = None,psi = None):
+        for index, gmm_component in enumerate(gmm_components):
+            first_component = (gmm_component[0] / 2, gmm_component[1] + d[index], gmm_component[2])
+            new_gmm_components.append(first_component)
 
-        self.X = X
-        self.psi = psi
-        self.model = model
-        self.psi = psi
+            second_component = (gmm_component[0] / 2, gmm_component[1] - d[index], gmm_component[2])
+            new_gmm_components.append(second_component)
 
-        self.Mean_matrix = Calculate_mean(self.X)
-        self.Covariance_matrix = Calculate_Covarariance_Matrix(self.X)
-        self.Weight_matrix = 1.0
+        return new_gmm_components
 
-        self.gmm = [(self.Weight_matrix, self.Mean_matrix, self.Covariance_matrix)]
+    @staticmethod
+    def _compute_d(gmm_components, alpha):
 
-        new_gmm, loglikelihood = self.EM(self.X, self.gmm, self.model, self.psi)
+        # ---Compute displacement vector d--- #
 
-        self.gmm = new_gmm
+        d_array = []
 
+        for g in range(len(gmm_components)):
+            u, s, _ = numpy.linalg.svd(gmm_components[g][2])
+            d = u[:, 0:1] * s[0] ** 0.5 * alpha
+            d_array.append(d)
 
-        gmm = []
-        likelihood = []
+        return d_array
 
-        likelihood.append(loglikelihood)
+    def __str__(self):
 
-
-        for iteration in range(int(number_of_components/2)):
-
-            for g in range(len(self.gmm)):
-
-                dg = self._Compute_d(self.gmm[g][2], alpha)
-
-                gmm_1 = (self.gmm[g][0]/2, self.gmm[g][1] + dg, self.gmm[g][2])
-                gmm.append(gmm_1)
-
-
-                gmm_2 = (self.gmm[g][0]/2.0, self.gmm[g][1] - dg, self.gmm[g][2])
-                gmm.append(gmm_2)
-
-                
-
-
-            new_gmm_1, log_likelihood_1 = self.EM(self.X,gmm)
-
-            self.gmm = new_gmm_1
-            gmm = []
-
-            likelihood.append(log_likelihood_1)
-
-
-
-
-
-        return self.gmm, likelihood
-
-
-if __name__ == '__main__':
-
-    Dataset_4D = np.load("GMM_data_4D.npy")
-    gmm_4D = load_gmm("GMM_4D_3G_init.json")
-    log_density_true_4D = np.load("GMM_4D_3G_init_ll.npy")
-    GMM_4D_EM = load_gmm("GMM_4D_3G_EM.json")
-
-    Dataset_1D = np.load("GMM_data_1D.npy")
-    gmm_1D = load_gmm("GMM_1D_3G_init.json")
-    log_density_true_1D = np.load("GMM_1D_3G_init_ll.npy")
-    GMM_1D_EM = load_gmm("GMM_1D_3G_EM.json")
-
-    GMM_1D_4G_EM_LBG = load_gmm("GMM_1D_4G_EM_LBG.json")
-
-    """GMM_model_4D = GMM_Evaluator()
-    GMM_EM_4, avg_log_likelihood_4 = GMM_model_4D.EM(Dataset_4D,gmm_4D)
-    Joint, Marginal = GMM_model_4D.PlotHistogram()"""
-
-
-
-    GMM_model_1D = GMM_Evaluator()
-    gmm, loglikelihood = GMM_model_1D.EM(Dataset_1D,gmm_1D)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return f"The current GMM component is: {self.gmm_components}."
