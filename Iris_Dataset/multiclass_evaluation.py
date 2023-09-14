@@ -6,10 +6,23 @@ import scipy
 class MulticlassTaskEvaluator:
 
     def __init__(self, prior_vector, cost_matrix):
+        """
+        Constructor for the MulticlassTaskEvaluator class.
+        :param prior_vector: vector of priors for all the classes available.
+        :param cost_matrix: DxD matrix having a cost of mis-classification, the diagonal in this matrix is 0.
+
+        """
         self.prior_vector = prior_vector
         self.cost_matrix = cost_matrix
 
     def compute_dcf(self, class_log_likelihood, ground_truth):
+        """
+        Compute the detection cost function of a multiclass dataset
+        :param class_log_likelihood: Log likelihood of each datapoint in the dataset of each class.
+        :param ground_truth: the true label of each datapoint in the dataset.
+        :return: cost of all the distinct classes, comparing the cost of all the distinct classes with a cost of dummy.
+
+        """
 
         detection_cost = np.zeros(self.prior_vector.shape)
 

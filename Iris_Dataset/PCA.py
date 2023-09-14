@@ -28,23 +28,13 @@ class PCA:
         """
         In the transform section of PCA, we perform a linear transformation on the new directions computed in the
         fit section.\n
-        The transformation follows the equation: ....
 
         :param data_matrix: data matrix to perform transformation on.
         :return: Transformed data based on the new directions calculated by the eigenvectors.
+
         """
         centered_data = center_data(data_matrix)
 
         transformed_data = np.dot(self.components.T, centered_data)
 
         return transformed_data
-
-
-if __name__ == '__main__':
-    data, labels = load_data_from_file("Dataset/iris.csv")
-
-    pca = PCA(n_components=2)
-    pca.fit(data_matrix=data)
-    X_transformed = pca.transform(data_matrix=data)
-
-    scatter_plot(X_transformed, labels)

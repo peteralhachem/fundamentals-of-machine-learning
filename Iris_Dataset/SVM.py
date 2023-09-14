@@ -3,32 +3,50 @@ import scipy
 
 
 class SVM:
-    def __init__(self, mode):
+    def __init__(self, mode, k, c, gamma=None, constant=None, degree=None):
+        """
+        Constructor for SVM.
+        :param mode: Type of SVM used:[Linear, Polynomial, RBF].
+        :param k: Value used to extend the matrix with: usually {1 or 10} for Linear and {0 or 1} for Kernel.
+        :param c: Value used to bound the gradient when computed: usually with {0.1, 1, 10}.
+        :param gamma: Value used to compute RBF: usually {1 or 10}.
+        :param constant: Value used to compute Polynomial: usually {0 or 1}.
+        :param degree: Value used to set the degree of the polynomial used: usually 2.
+
+        """
         self.mode = mode
         self.data_matrix = None
         self.labels = None
-        self.k = None
-        self.c = None
-        self.gamma = None
-        self.constant = None
-        self.degree = None
+        self.k = k
+        self.c = c
+        self.gamma = gamma
+        self.constant = constant
+        self.degree = degree
         self.z = None
         self.extended_data = None
         self.predicted_labels = None
         self.primal_loss = None
         self.dual_loss = None
         self.w_hat = None
+        self.error = None
 
-    def fit(self, data_matrix, labels, k, c, gamma=None, constant=None, degree=None):
+    def fit(self, data_matrix, labels):
+        """
+        Train the SVM classifier on the given data matrix and labels, the training can be specified by the mode of
+        covariance we have:[Linear, Polynomial, RBF].
+        :param data_matrix: Matrix to train (D,N) where D is the number of features and N is the number of samples.
+        :param labels: The labels associated to each data point (N,) where N is the number of samples.
+
+        """
+
         self.data_matrix = data_matrix
         self.labels = labels
-        self.k = k
-        self.c = c
-        self.gamma = gamma
-        self.constant = constant
-        self.degree = degree
 
     def _extend_matrix(self):
+        """
+        Extend the data matrix with the values of K.
+        :return: extended data matrix.
+        """
 
         row = np.tile(self.k, (1, self.data_matrix.shape[1]))
 
@@ -38,6 +56,15 @@ class SVM:
 
     @staticmethod
     def _polynomial(data_1, data_2, constant, degree, k):
+        """
+        Compute the polynomial function.
+        :param data_1: First data matrix.
+        :param data_2: Second data matrix.
+        :param constant: value used to compute the polynomial.
+        :param degree: degree of the polynomial.
+        :param k: bias in the polynomial.
+        :return: result of the polynomial function.
+        """
 
         result = (np.dot(data_1.T, data_2) + constant) ** degree + k ** 2
 
@@ -46,11 +73,24 @@ class SVM:
     @staticmethod
     def _rbf(data_1, data_2, gamma, k):
 
+        """
+        Compute the RBF function.
+        :param data_1: First data matrix.
+        :param data_2: Second data matrix.
+        :param gamma: constant used to calculate the RBF value.
+        :param k: bias in the RBF.
+        :return: result of the RBF function.
+        """
+
         result = np.exp(-gamma * (np.linalg.norm(data_1 - data_2) ** 2)) + k ** 2
 
         return result
 
     def _calculate_h(self):
+        """
+        compute the h which is a variable needed to compute the objective function L(h).
+        :return: h-variable of the objective function.
+        """
 
         self.z = 2 * self.labels - 1
 
@@ -59,7 +99,7 @@ class SVM:
         if self.mode == "Linear":
             g = np.dot(self.extended_data.T, self.extended_data)
 
-        elif self.mode == "Kernel Polynomial":
+        elif self.mode == "Polynomial":
             g = self._polynomial(self.data_matrix, self.data_matrix, self.constant, self.degree, self.k)
 
         else:
@@ -73,6 +113,13 @@ class SVM:
         return h
 
     def _l_function(self, alpha):
+        """
+        Dual Objective function under the name L(alpha).
+        Our objective is to take this function and minimize its value.
+        :param alpha: the argument of the objective function that will let us find the primal loss and the linear
+        transformation vector.
+        :return:
+        """
 
         h = self._calculate_h()
         ones = np.ones(self.extended_data.shape[1])
@@ -84,6 +131,11 @@ class SVM:
         return result, gradient.reshape(gradient.size)
 
     def _find_alpha(self):
+        """
+        Calculate the value of alpha by using the objective function L(alpha) and passing an initial value and bounds.
+        Using a gradient descent algorithm we are able to get the value of the vector X as well as the primal loss.
+        :return:
+        """
 
         self.extended_data = self._extend_matrix()
 
@@ -96,6 +148,15 @@ class SVM:
 
     def predict(self, test_matrix):
 
+        """
+        Predict the labels for a given test matrix.
+        Contrary to a Gaussian classifier, SVM scores do not have probabilistic meaning, and they are mainly based on
+        linear transformed scores.
+        :param test_matrix: The matrix used to calculate the accuracy/ error of the classifier.
+        :return predicted_labels: The labels that are predicted by our model of the dimension (N,).
+
+         """
+
         score = np.zeros(test_matrix.shape[1])
 
         alpha, self.primal_loss = self._find_alpha()
@@ -104,20 +165,20 @@ class SVM:
 
             self.w_hat = np.dot(self.z * self.extended_data, alpha)
             w = self.w_hat[:test_matrix.shape[0]].reshape(self.w_hat[:test_matrix.shape[0]].shape[0], 1)
-            b = self.w_hat[DTE.shape[0]]
+            b = self.w_hat[test_matrix.shape[0]]
 
-            for i in range(DTE.shape[1]):
+            for i in range(test_matrix.shape[1]):
                 score[i] = np.dot(w.T, test_matrix[:, i]) + b
 
-        elif self.mode == "Kernel Polynomial":
+        elif self.mode == "Polynomial":
             score = np.dot(alpha * self.z, self._polynomial(self.data_matrix, test_matrix, self.constant, self.degree,
                                                             self.k))
-        elif self.mode == "Kernel RBF":
+        elif self.mode == "RBF":
 
             kernel_values = np.zeros((self.data_matrix.shape[1], test_matrix.shape[1]))
 
             for i in range(self.data_matrix.shape[1]):
-                for j in range(DTE.shape[1]):
+                for j in range(test_matrix.shape[1]):
                     kernel_values[i, j] = self._rbf(self.data_matrix[:, i], test_matrix[:, j], self.gamma, self.k)
 
             score = np.dot(alpha * self.z, kernel_values)
@@ -127,6 +188,10 @@ class SVM:
         return self.predicted_labels
 
     def _loss_for_linear(self):
+        """
+        Compute the dual loss, primal loss and dual gap for the linear SVM.
+        :return:
+        """
 
         maxsum = 0
 
@@ -140,88 +205,55 @@ class SVM:
         return self.dual_loss, self.Primal_loss, dual_gap
 
     def _loss_for_kernel(self):
+        """
+        Compute the dual loss for the given kernel SVM.
+        :return:
+        """
 
         self.dual_loss = -self.primal_loss
 
         return self.dual_loss
 
-    def calculate_losses(self):
+    def calculate_error(self, ground_truth):
 
-        if self.mode == "Linear":
-            return self._loss_for_linear()
+        """
+        Compute the error of the model where the error is the number of misclassified data points over all the data
+        points.
+        :param ground_truth: The true labels of the test dataset that we have used to predict the labels for.
+        :return error:  an error rate that is represented in the percentual way.
 
-        if self.mode == "Kernel Polynomial":
-            return self._loss_for_kernel()
+        """
 
-        if self.mode == "Kernel RBF":
-            return self._loss_for_kernel()
+        bool_predictions = np.array(self.predicted_labels != ground_truth)
 
-    def calculate_error(self, test_labels):
+        self.error = (float(bool_predictions.sum() / ground_truth.shape[0])) * 100
 
-        bool_predictions = np.array(self.predicted_labels != test_labels)
+        return self.error
 
-        error = float(bool_predictions.sum() / test_labels.shape[0])
+    def __str__(self):
+        """
+        String function used to represent a way to display the values of a classifier and the corresponding error.
+        :return:
+        """
 
-        return error * 100
+        string = ""
 
-    def calculate_accuracy(self, test_labels):
+        if self.mode == 'Linear':
+            self.dual_loss, self.primal_loss, dual_gap = self._loss_for_linear()
+            string = f"K={self.k} | C={self.c} | primal loss={-self.primal_loss:.6e} | dual loss={self.dual_loss:.6e}" \
+                     f"| dual gap={dual_gap:6e} | error = {self.error:.1f}%\n "
+            string += "\n-----------------------------\n"
 
-        bool_predictions = np.array(self.predicted_labels == test_labels)
+        elif self.mode == 'Polynomial':
+            self.dual_loss = self._loss_for_kernel()
+            string = f"Kernel:{self.mode} | K={self.k} | C={self.c} | (d={self.degree},c={self.constant}) |" \
+                     f" dual loss={self.dual_loss:.6e} | error = {self.error:.1f}%\n "
+            string += "\n-----------------------------\n"
 
-        accuracy = float(bool_predictions.sum() / test_labels.shape[0])
+        elif self.mode == 'RBF':
+            self.dual_loss = self._loss_for_kernel()
+            string = f"Kernel:{self.mode} | K={self.k} | C={self.c} | (gamma={self.gamma}) | dual loss=" \
+                     f"{self.dual_loss:.6e} | error = {self.error:.1f}%\n "
+            string += "\n-----------------------------\n"
 
-        return accuracy * 100
-
-
-if __name__ == "__main__":
-    Data, Label = load_iris_binary()
-    (DTR, LTR), (DTE, LTE) = split_db_2to1(Data, Label)
-
-    K_array = [1, 10]
-    C_array = [0.1, 1, 10]
-
-    K_array_Kernel = [0, 1]
-    constant_value = [0, 1]
-    gamma_value = [1, 10]
-
-    # ----------------Linear SVM----------------#
-
-    """print("K | C | Primal Loss | Dual Loss | Duality Gap | Error Rate\n ")
-
-    for K in K_array:
-        for C in C_array:
-            svm = SVM("Linear")
-            svm.fit(DTR, LTR, K, C)
-            Predictions = svm.Predict(DTE)
-            Dual_loss,Primal_loss,Duality_gap = svm.CalculateLosses()
-            error_rate = svm.calculate_error(LTE)
-
-            print(f"{K} | {C} | {-Primal_loss:.6e} | {Dual_loss:.6e} | {Duality_gap:6e} | {error_rate:.1f}%\n ")"""
-
-    # --------------Polynomial Kernel SVM --------#
-
-    """print("K | C | Kernel: Polynomial | Dual Loss | Error Rate\n ")
-
-    for k in K_array_Kernel:
-        for constant in constant_value:
-            svm = SVM("Kernel Polynomial")
-            svm.fit(DTR,LTR,k,1,constant= constant,degree = 2)
-            Predictions = svm.Predict(DTE)
-            Dual_loss = svm.CalculateLosses()
-            error_rate = svm.calculate_error(LTE)
-
-            print(f"{k} | {1} | (d={2},c={constant}) | {Dual_loss:.6e} | {error_rate:.1f}%\n ")"""
-
-    # -------------------RBF Kernel SVM------------------------#
-
-    """print("K | C | Kernel: RBF | Dual Loss | Error Rate\n ")
-
-    for k in K_array_Kernel:
-        for gamma in gamma_value:
-            svm = SVM("Kernel RBF")
-            svm.fit(DTR,LTR,k,1,gamma = gamma)
-            Predictions = svm.Predict(DTE)
-            Dual_loss = svm.CalculateLosses()
-            error_rate = svm.calculate_error(LTE)
-
-            print(f"{k} | {1} | (gamma={gamma}) | {Dual_loss:.6e} | {error_rate:.1f}%\n ")"""
+        return string

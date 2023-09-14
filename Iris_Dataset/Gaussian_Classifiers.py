@@ -10,8 +10,19 @@ class GaussianClassifier:
         self.mean = None
         self.covariance = None
         self.predicted_labels = None
+        self.error = None
+        self.accuracy = None
+        self.is_error = False
 
     def fit(self, data_matrix, labels):
+
+        """
+        Train the Gaussian classifier on the given data matrix and labels, the training can be specified by the mode of
+        covariance we have:[Tied, Multivariate, Naive Bayes, Tied Naive Bayes].
+        :param data_matrix: Matrix to train (D,N) where D is the number of features and N is the number of samples.
+        :param labels: The labels associated to each data point (N,) where N is the number of samples.
+
+        """
         self.data = data_matrix
         self.labels = labels
         self.mean = calculate_class_means(self.data, self.labels)
@@ -43,11 +54,23 @@ class GaussianClassifier:
             self.covariance = self.covariance / self.data.shape[1]
             self.covariance = self.covariance * np.identity(self.data.shape[0])
 
-    def predict(self, test_matrix):
-        prior = np.array([1/3, 1/3, 1/3])
-        likelihood_scores = calculate_class_likelihood(test_matrix, self.mean, self.covariance, self.mode)
+    def predict(self, test_matrix, prior_probabilities=None):
+        """
+        Predict the labels for a given test matrix.
+        :param test_matrix: The matrix used to calculate the accuracy/ error of the classifier.
+        :param prior_probabilities: The probabilities of all the distinct classes of the dataset.
+        :return predicted_labels: The labels that are predicted by our model of the dimension (N,).
 
-        joint_densities = likelihood_scores * prior.reshape(prior.size, 1)
+        """
+        if prior_probabilities is None:
+
+            prior_probabilities = [float(1.0/len(np.unique(self.labels)))] * len(np.unique(self.labels))
+
+        prior_probabilities = np.array(prior_probabilities)
+
+        likelihood_scores = calculate_class_likelihood(self.mode, test_matrix, self.mean, self.covariance)
+
+        joint_densities = likelihood_scores * prior_probabilities.reshape(prior_probabilities.size, 1)
 
         # ----Marginal is the summation of all the Joint densities of a sample within all the classes---- #
 
@@ -62,36 +85,49 @@ class GaussianClassifier:
 
     def calculate_error(self, ground_truth):
 
+        """
+        Compute the error of the model where the error is the number of misclassified data points over all the data
+        points.
+        :param ground_truth: The true labels of the test dataset that we have used to predict the labels for.
+        :return error:  an error rate that is represented in the percentual way.
+
+        """
+        self.is_error = True
+
         bool_predictions = np.array(self.predicted_labels != ground_truth)
 
-        gaussian_error = float(bool_predictions.sum()/ground_truth.shape[0])
+        self.error = (float(bool_predictions.sum()/ground_truth.shape[0])) * 100
 
-        return gaussian_error * 100
+        return self.error
 
     def calculate_accuracy(self, ground_truth):
+        """
+        Compute the accuracy of the model where the accuracy is the number of well classified data points
+        over all the data points.
+        :param ground_truth: The true labels of the test dataset that we have used to predict the labels for.
+        :return accuracy:  an accuracy rate that is represented in the percentual way.
+
+        """
+
         boolean_predictions = np.array(self.predicted_labels == ground_truth)
 
-        accuracy = float(boolean_predictions.sum() / ground_truth.shape[0])
+        self.accuracy = float(boolean_predictions.sum() / ground_truth.shape[0]) * 100
 
-        return accuracy * 100
+        return self.accuracy
 
+    def __str__(self):
+        """
+        String function used to represent a way to display the values of a classifier and
+        the corresponding error/accuracy.
+        :return:
+        """
 
-if __name__ == '__main__':
-    Data, Label = load_iris()
+        if self.is_error:
+            string = f"The error rate of the prediction of model {self.mode} : {self.error:.1f}%"
+            string += "\n---------------------------------\n"
 
-    (DTR, LTR), (DTE, LTE) = split_db_2to1(Data, Label)
+        else:
+            string = f"The error rate of the prediction of model {self.mode} : {self.accuracy:.1f}%"
+            string += "\n---------------------------------\n"
 
-    models = ["Multivariate", "Naive Bayes", "Tied", "Tied Naive Bayes"]
-
-    for index, model in enumerate(models):
-
-        error = leave_one_out_cross_validation(GaussianClassifier, model, Data, Label)
-        print(f"The error rate of the prediction of model {model} : {error:.1f}%")
-        print("\n---------------------------------\n")
-        # print(LOO_Cross_Validation(Gaussian_Classifier,model,Data,Label)[1].T)
-
-    # log_test = np.load("Dataset/LOO_logSJoint_MVG.npy")
-    # log_test = np.load("Dataset/LOO_logSJoint_NaiveBayes.npy")
-    # log_test = np.load("Dataset/LOO_logSJoint_TiedMVG.npy")
-    # log_test = np.load("Dataset/LOO_logSJoint_TiedNaiveBayes.npy")
-    # print(log_test)
+        return string
