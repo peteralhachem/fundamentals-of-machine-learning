@@ -39,7 +39,7 @@ class LDA:
 
     def transform(self, data_matrix):
         """
-        In the transform section of LDS, we perform a linear transformation on the new directions computed in the
+        In the transform section of LDA, we perform a linear transformation on the new directions computed in the
         fit section.\n
 
         :param data_matrix: data matrix to perform transformation on.
