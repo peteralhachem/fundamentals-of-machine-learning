@@ -1,9 +1,15 @@
 
-from Utils import *
+from utils import *
 
 
 class GaussianClassifier:
     def __init__(self, mode):
+        """
+        Base class for Gaussian Classifier.
+        :param mode: Type of covariance used for the Gaussian classifier, it can consider one of these four options:
+        [Multivariate, Naive Bayes, Tied, Tied Naive Bayes].
+
+        """
         self.mode = mode
         self.data = None
         self.labels = None

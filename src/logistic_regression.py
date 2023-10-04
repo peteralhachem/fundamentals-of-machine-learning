@@ -1,5 +1,5 @@
 from scipy.optimize import fmin_l_bfgs_b
-from Utils import *
+from utils import *
 
 
 class LogisticRegression:

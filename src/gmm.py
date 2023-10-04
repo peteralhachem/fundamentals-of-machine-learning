@@ -1,9 +1,9 @@
 from math import inf
 from scipy.special import logsumexp
 
-from Utils import *
+from utils import *
 from GMM_load import *
-from MVG import multivariate_gaussian
+from mvg import multivariate_gaussian
 
 
 class GMM:

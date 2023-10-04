@@ -2,7 +2,7 @@ import numpy as np
 import csv
 import matplotlib.pyplot as plt
 from sklearn.datasets import load_iris
-from MVG import multivariate_gaussian
+from mvg import multivariate_gaussian
 
 
 # ---Calculate the mean--- #
@@ -386,3 +386,10 @@ def plot_density(data_matrix, marginal_log_density):
     plt.xlim([-10.0, 5.0])
     plt.ylim([0.0, 0.3])
     plt.show()
+
+
+# ----------------Display results into a txt file-------------------------- #
+def save_results_txt(model,):
+    pass
+
+

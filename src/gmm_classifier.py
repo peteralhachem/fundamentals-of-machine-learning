@@ -1,5 +1,5 @@
 
-from GMM import *
+from gmm import *
 
 
 class GMMClassifier(GMM):

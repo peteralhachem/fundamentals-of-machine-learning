@@ -1,4 +1,4 @@
-from Utils import *
+from utils import *
 
 
 class PCA:
@@ -6,6 +6,8 @@ class PCA:
         self.n_components = n_components
         self.cov = None
         self.components = None
+        self.data_matrix = None
+        self.transformed_data = None
 
     def fit(self, data_matrix):
         """
@@ -15,8 +17,9 @@ class PCA:
         :param data_matrix: matrix of data to perform PCA on.
 
         """
+        self.data_matrix = data_matrix
 
-        centered_data = center_data(data_matrix)
+        centered_data = center_data(self.data_matrix)
 
         self.cov = calculate_covariance(centered_data)
 
@@ -33,8 +36,19 @@ class PCA:
         :return: Transformed data based on the new directions calculated by the eigenvectors.
 
         """
+        self.data_matrix = data_matrix
+
         centered_data = center_data(data_matrix)
 
-        transformed_data = np.dot(self.components.T, centered_data)
+        self.transformed_data = np.dot(self.components.T, centered_data)
 
-        return transformed_data
+        return self.transformed_data
+
+    def __str__(self):
+
+        string = f"PCA with n={self.n_components}"
+
+        return string
+
+    def save_results(self):
+        pass
