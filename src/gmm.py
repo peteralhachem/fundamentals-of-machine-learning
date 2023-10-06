@@ -1,9 +1,9 @@
 from math import inf
 from scipy.special import logsumexp
 
-from utils import *
-from GMM_load import *
-from mvg import multivariate_gaussian
+from src.utils import *
+from src.GMM_load import *
+from src.mvg import multivariate_gaussian
 
 
 class GMM:
@@ -14,6 +14,7 @@ class GMM:
         self.responsibilities = None
         self.joint_log_density = None
         self.marginal_log_density = None
+        self.is_lbg = None
 
     def _gmm_log_density(self):
         """
@@ -161,6 +162,7 @@ class GMM:
         :param covariance_type: The type of covariance we want to have, e.g. "full, diagonal, tied".
 
         """
+        self.is_lbg = True
         self.Data = data_matrix
         mu = calculate_mean(self.Data)
         cov = calculate_covariance(self.Data)
@@ -244,3 +246,21 @@ class GMM:
             d_array.append(d)
 
         return d_array
+
+    def plot_density(self):
+        """
+        Plotting density for the GMM model to display both the marginal log density and the dataset.
+        which is the distribution of each point of the data matrix.
+
+        """
+        x = np.linspace(-10, 5, self.marginal_log_density.shape[0])
+
+        plt.hist(self.Data, bins=60, rwidth=0.9, density=True)
+        plt.plot(x, self.marginal_log_density)
+        plt.xlim([-10.0, 5.0])
+        plt.ylim([0.0, 0.3])
+        plt.show()
+        if self.is_lbg:
+            plt.savefig("../img/lbg_plot.png")
+        else:
+            plt.savefig("../img/em_plot.png")

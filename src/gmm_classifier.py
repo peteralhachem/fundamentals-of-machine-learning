@@ -1,5 +1,5 @@
 
-from gmm import *
+from src.gmm import *
 
 
 class GMMClassifier(GMM):
@@ -85,14 +85,45 @@ class GMMClassifier(GMM):
 
         return self.error
 
-    def __str__(self):
+    def __str__(self, error=None):
         """
         String function used to represent a way to display the values of a classifier and the corresponding error.
         :return:
         """
         string = f"Covariance Type = {self.covariance_type} | Number of Components = {self.num_components} | " \
-                 f"error = {self.error}."
+                 f"error = {self.error}%"
 
         string += "\n----------------------------------------------------\n"
 
         return string
+
+    def save_results(self, error=None):
+
+        """
+        Save the results of Gaussian Mixture Model classifier.
+        :param error: (Optional) used when a cross-validation technique is used to calculate the cumulative error.
+
+        """
+
+        if os.path.exists('../results/gmm'):
+            pass
+        else:
+            os.mkdir('../results/gmm')
+
+        if os.path.exists('../results/gmm/gmm_classifier.txt'):
+            print("* opening gmm_classifier file. * \n")
+            with open('../results/gmm/gmm_classifier.txt', 'a') as file:
+                print("* writing on gmm_classifier file. * \n")
+                file.write(self.__str__(error))
+                print("* writing done. * \n")
+
+        else:
+            try:
+                print("* opening gmm_classifier file. * \n")
+                with open('../results/gmm/gmm_classifier.txt', 'a') as file:
+                    print("* writing on gmm_classifier file. * \n")
+                    file.write(self.__str__(error))
+                    print("* writing done. * \n")
+
+            except FileNotFoundError:
+                print("cannot open file.")

@@ -1,5 +1,5 @@
 from scipy.optimize import fmin_l_bfgs_b
-from utils import *
+from src.utils import *
 
 
 class LogisticRegression:
@@ -170,14 +170,43 @@ class LogisticRegression:
 
         return self.error
 
-    def __str__(self):
+    def __str__(self, error=None):
 
         """
         String function used to represent a way to display the values of a classifier and the corresponding error.
         :return:
         """
-
+        if error is None:
+            pass
+        else:
+            self.error = error
         string = f"Lambda:{self.value_lambda} | J:{self.J:.6e} | error:{self.error:.1f}%"
         string += "\n-----------------------------\n"
 
         return string
+
+    def save_results(self, error=None):
+        """
+        Save the results of logistic regression classifier.
+        :param error: (Optional) used when a cross-validation technique is used to calculate the cumulative error.
+
+        """
+
+        if os.path.exists('../results/logistic_regression'):
+            pass
+
+        else:
+            os.mkdir('../results/logistic_regression')
+
+        if os.path.exists('../results/logistic_regression/lr_%s.txt' % self.mode):
+            with open('../results/logistic_regression/lr_%s.txt' % self.mode, 'a') as file:
+                file.write(self.__str__(error))
+
+        else:
+            try:
+                with open('../results/logistic_regression/lr_%s.txt' % self.mode, 'a') as file:
+                    file.write(self.__str__(error))
+
+            except FileNotFoundError:
+
+                print("cannot open file.")

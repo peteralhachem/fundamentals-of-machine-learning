@@ -1,4 +1,4 @@
-from utils import *
+from src.utils import *
 import scipy
 
 
@@ -94,10 +94,10 @@ class SVM:
 
         self.z = 2 * self.labels - 1
 
-        self.Extended_Data = self._extend_matrix()
+        self.extended_data = self._extend_matrix()
 
         if self.mode == "Linear":
-            g = np.dot(self.extended_data.T, self.extended_data)
+            g = np.matmul(self.extended_data.T, self.extended_data)
 
         elif self.mode == "Polynomial":
             g = self._polynomial(self.data_matrix, self.data_matrix, self.constant, self.degree, self.k)
@@ -108,7 +108,7 @@ class SVM:
                 for j in range(g.shape[1]):
                     g[i, j] = self._rbf(self.data_matrix[:, i], self.data_matrix[:, j], self.gamma, self.k)
 
-        h = np.dot(self.z.reshape(self.z.shape[0], 1), self.z.reshape(self.z.shape[0], 1).T) * g
+        h = self.z.reshape(self.z.shape[0], 1) * self.z.reshape(1, self.z.shape[0]) * g
 
         return h
 
@@ -120,15 +120,15 @@ class SVM:
         transformation vector.
         :return:
         """
+        alpha = alpha.reshape(alpha.shape[0], 1)
 
         h = self._calculate_h()
-        ones = np.ones(self.extended_data.shape[1])
 
-        result = 0.5 * np.dot(np.dot(alpha.T, h), alpha) - np.dot(alpha.T, ones)
+        result = (1.0 / 2.0) * np.matmul(np.matmul(alpha.T, h), alpha) - alpha.sum()
 
-        gradient = np.dot(h, alpha) - ones
+        gradient = np.matmul(h, alpha).flatten() - 1
 
-        return result, gradient.reshape(gradient.size)
+        return result, gradient
 
     def _find_alpha(self):
         """
@@ -139,10 +139,10 @@ class SVM:
 
         self.extended_data = self._extend_matrix()
 
-        bound = [(0, self.c)] * self.Extended_Data.shape[1]
-        x0 = np.zeros(self.Extended_Data.shape[1])
+        bound = [(0, self.c)] * self.extended_data.shape[1]
+        x0 = np.zeros(self.extended_data.shape[1])
 
-        x, self.Primal_loss, _ = scipy.optimize.fmin_l_bfgs_b(self._l_function, x0=x0, bounds=bound, factr=1.0)
+        x, self.primal_loss, _ = scipy.optimize.fmin_l_bfgs_b(self._l_function, x0=x0, bounds=bound, factr=1.0)
 
         return x, self.primal_loss
 
@@ -164,8 +164,8 @@ class SVM:
         if self.mode == "Linear":
 
             self.w_hat = np.dot(self.z * self.extended_data, alpha)
-            w = self.w_hat[:test_matrix.shape[0]].reshape(self.w_hat[:test_matrix.shape[0]].shape[0], 1)
-            b = self.w_hat[test_matrix.shape[0]]
+            w = self.w_hat[:self.data_matrix.shape[0]].reshape(self.w_hat[:self.data_matrix.shape[0]].shape[0], 1)
+            b = self.w_hat[self.data_matrix.shape[0]]
 
             for i in range(test_matrix.shape[1]):
                 score[i] = np.dot(w.T, test_matrix[:, i]) + b
@@ -195,14 +195,14 @@ class SVM:
 
         maxsum = 0
 
-        for i in range(self.Extended_Data.shape[1]):
+        for i in range(self.extended_data.shape[1]):
             maxsum += max(0, 1 - (self.z[i] * np.dot(self.w_hat, self.extended_data[:, i])))
 
         self.dual_loss = 0.5 * (np.linalg.norm(self.w_hat)) ** 2 + self.c * maxsum
 
-        dual_gap = self.dual_loss + self.Primal_loss
+        dual_gap = self.primal_loss - self.dual_loss
 
-        return self.dual_loss, self.Primal_loss, dual_gap
+        return self.dual_loss, self.primal_loss, dual_gap
 
     def _loss_for_kernel(self):
         """
@@ -230,13 +230,18 @@ class SVM:
 
         return self.error
 
-    def __str__(self):
+    def __str__(self, error=None):
         """
         String function used to represent a way to display the values of a classifier and the corresponding error.
+        :param error: (Optional) used when a cross-validation technique is used to calculate the cumulative error.
         :return:
         """
 
         string = ""
+        if error is None:
+            pass
+        else:
+            self.error = error
 
         if self.mode == 'Linear':
             self.dual_loss, self.primal_loss, dual_gap = self._loss_for_linear()
@@ -257,3 +262,51 @@ class SVM:
             string += "\n-----------------------------\n"
 
         return string
+
+    def save_results(self, error=None):
+        """
+        Save the results of support vector machine classifier.
+        :param error: (Optional) used when a cross-validation technique is used to calculate the cumulative error.
+
+        """
+
+        if os.path.exists('../results/svm'):
+            pass
+        else:
+            os.mkdir('../results/svm')
+
+        if self.mode == 'Linear':
+            if os.path.exists('../results/svm/linear_svm.txt'):
+                print('* Opening linear svm file *\n')
+                with open('../results/svm/linear_svm.txt', 'a') as file:
+                    print("writing on file.\n")
+                    file.write(self.__str__(error))
+                    print("writing done.\n")
+
+            else:
+                try:
+                    print("* opening linear svm file. *\n")
+                    with open('../results/svm/linear_svm.txt', 'a') as file:
+                        print("* writing on file. *\n")
+                        file.write(self.__str__(error))
+                        print("* writing done. *\n")
+                except FileNotFoundError:
+                    print("could not open file.")
+
+        else:
+            if os.path.exists('../results/svm/kernel_svm.txt'):
+                print('* Opening kernel svm file *\n')
+                with open('../results/svm/kernel_svm.txt', 'a') as file:
+                    print("* writing on file. *\n")
+                    file.write(self.__str__(error))
+                    print("* writing done. *\n")
+
+            else:
+                try:
+                    print('* Opening kernel svm file *\n')
+                    with open('../results/svm/kernel_svm.txt', 'a') as file:
+                        print("* writing on file. *\n")
+                        file.write(self.__str__(error))
+                        print("* writing done. *\n")
+                except FileNotFoundError:
+                    print("could not open file.")

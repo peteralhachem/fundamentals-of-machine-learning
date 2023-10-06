@@ -1,0 +1,1 @@
+PCA with n=2, initial data shape=(4, 150) ---> reduced data shape=(2, 150).

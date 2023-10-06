@@ -1,4 +1,6 @@
-from utils import *
+from src.utils import *
+import numpy as np
+import os
 
 
 class PCA:
@@ -46,9 +48,31 @@ class PCA:
 
     def __str__(self):
 
-        string = f"PCA with n={self.n_components}"
+        string = f"PCA with n={self.n_components}, initial data shape={self.data_matrix.shape} ---> reduced data shape"\
+                 f"={self.transformed_data.shape}."
 
         return string
 
     def save_results(self):
-        pass
+        """
+        Save the results of the pca class into a txt file.
+
+        """
+
+        # check if directory exists
+        if os.path.exists("../results/pca"):
+            pass
+        else:
+            os.mkdir("../results/pca")
+
+        if os.path.exists('../results/pca/pca_%d.txt' % self.n_components):
+            with open('../results/pca/pca_%d.txt' % self.n_components, 'w') as file:
+                file.write(self.__str__())
+
+        else:
+            try:
+                with open('../results/pca/pca_%d.txt' % self.n_components, 'w') as file:
+                    file.write(self.__str__())
+
+            except FileNotFoundError:
+                print("Could not create file.")

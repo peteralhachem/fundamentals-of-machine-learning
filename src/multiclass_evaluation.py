@@ -1,5 +1,5 @@
 
-from utils import *
+from src.utils import *
 import scipy
 
 
@@ -14,6 +14,8 @@ class MulticlassTaskEvaluator:
         """
         self.prior_vector = prior_vector
         self.cost_matrix = cost_matrix
+        self.normalized_dcf = None
+        self.dcf_u = None
 
     def compute_dcf(self, class_log_likelihood, ground_truth):
         """
@@ -43,4 +45,37 @@ class MulticlassTaskEvaluator:
             detection_cost[index] = np.dot(np.dot(miss_classification_matrix[:, index], self.cost_matrix[:, index]),
                                            self.prior_vector[index])
 
-        return detection_cost.sum(), detection_cost.sum() / cost_of_dummy
+        self.dcf_u = detection_cost.sum()
+        self.normalized_dcf = detection_cost.sum() / cost_of_dummy
+
+        return self.dcf_u, self.normalized_dcf
+
+    def __str__(self, eps=None):
+
+        string = f"eps: {eps} | DCF_u: {self.dcf_u:.3f} | DCF: {self.normalized_dcf:.3f}"
+        string += "\n-------------------------------------------------\n"
+
+        return string
+
+    def save_results(self, eps):
+        """
+        Save the results of the multiclass evaluator into a txt file.
+        :param eps: epsilon parameter required for the evaluation.
+
+        """
+
+        if os.path.exists('../results/evaluation'):
+            pass
+        else:
+            os.mkdir('../results/evaluation')
+
+        if os.path.exists('../results/evaluation/multiclass_evaluation.txt'):
+            with open('../results/evaluation/multiclass_evaluation.txt', 'a') as file:
+                file.write(self.__str__(eps))
+        else:
+            try:
+                with open('../results/evaluation/multiclass_evaluation.txt', 'a') as file:
+                    file.write(self.__str__(eps))
+
+            except FileNotFoundError:
+                print('cannot create file.')

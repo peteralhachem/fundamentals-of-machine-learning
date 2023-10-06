@@ -1,5 +1,6 @@
 
-from utils import *
+from src.utils import *
+import os
 
 
 class GaussianClassifier:
@@ -121,7 +122,7 @@ class GaussianClassifier:
 
         return self.accuracy
 
-    def __str__(self):
+    def __str__(self, error=None, accuracy=None):
         """
         String function used to represent a way to display the values of a classifier and
         the corresponding error/accuracy.
@@ -129,11 +130,46 @@ class GaussianClassifier:
         """
 
         if self.is_error:
-            string = f"The error rate of the prediction of model {self.mode} : {self.error:.1f}%"
+            if error is None:
+                pass
+            else:
+                self.error = error
+            string = f"The error rate regarding the prediction on Gaussian Classifier of model {self.mode} " \
+                     f": {self.error:.1f}%"
             string += "\n---------------------------------\n"
 
         else:
-            string = f"The error rate of the prediction of model {self.mode} : {self.accuracy:.1f}%"
+            if accuracy is None:
+                pass
+            else:
+                self.accuracy = accuracy
+            string = f"The accuracy rate regarding the prediction on Gaussian Classifier of model {self.mode} : " \
+                     f"{self.accuracy:.1f}%"
             string += "\n---------------------------------\n"
 
         return string
+
+    def save_results(self, error=None, accuracy=None):
+        """
+        Save the results of gaussian classifier.
+        :param error: (Optional) used when a cross-validation technique is used to calculate the cumulative error.
+        :param accuracy: (Optional) used when a cross-validation technique is used to calculate the cumulative accuracy.
+
+        """
+
+        if os.path.exists('../results/gaussian_classifier'):
+            pass
+        else:
+            os.mkdir('../results/gaussian_classifier')
+
+        if os.path.exists('../results/gaussian_classifier/gaussian_classifier_%s.txt' % self.mode):
+            with open('../results/gaussian_classifier/gaussian_classifier_%s.txt' % self.mode, 'w') as file:
+                file.write(self.__str__(error, accuracy))
+        else:
+            try:
+                with open('../results/gaussian_classifier/gaussian_classifier_%s.txt' % self.mode, 'w') as file:
+                    file.write(self.__str__(error, accuracy))
+
+            except FileNotFoundError:
+
+                print('Could not create file.')

@@ -1,0 +1,2 @@
+The error rate regarding the prediction on Gaussian Classifier of model Multivariate : 2.7%
+---------------------------------
